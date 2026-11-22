@@ -1,0 +1,6 @@
+﻿{
+  "gmailAccount": "umrajs123@gmail.com",
+  "sender": "noreply@diplo.de",
+  "pollSeconds": 60,
+  "sendDelaySeconds": 3
+}
