@@ -6,6 +6,7 @@ import puppeteer from 'puppeteer';
 import whatsapp from 'whatsapp-web.js';
 import { google } from 'googleapis';
 import { senderMatches, emailText } from './delivery.js';
+import { emailPdfFilename, renderEmailPdf } from './email-pdf.js';
 
 test('installed clients expose the APIs used by the agent', () => {
   assert.equal(typeof whatsapp.Client, 'function');
@@ -48,5 +49,15 @@ test('installed browser starts with a separate temporary profile', { timeout: 30
     const page = await browser.newPage();
     await page.setContent('<title>Agent browser test</title>');
     assert.equal(await page.title(), 'Agent browser test');
+  } finally { await browser.close(); }
+});
+
+test('email renderer produces a clean PDF document', { timeout: 30000 }, async () => {
+  const browser = await puppeteer.launch({ executablePath: 'C:/Program Files/Google/Chrome/Application/chrome.exe', headless: true });
+  try {
+    const parsed = await simpleParser('From: German Embassy <noreply@diplo.de>\r\nTo: recipient@example.com\r\nSubject: Appointment confirmation\r\nDate: Mon, 23 Nov 2026 12:00:00 +0000\r\nContent-Type: text/html\r\n\r\n<h1>Appointment confirmed</h1><p>Please attend at 10:00.</p>');
+    const pdf = await renderEmailPdf(browser, parsed);
+    assert.equal(pdf.subarray(0, 4).toString(), '%PDF');
+    assert.equal(emailPdfFilename(parsed, 'message-id'), 'German-Embassy - Appointment confirmation.pdf');
   } finally { await browser.close(); }
 });

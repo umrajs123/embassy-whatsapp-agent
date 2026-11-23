@@ -3,3 +3,4 @@ private/
 credentials.json
 *.log
 .wwebjs_cache/
+tmp/

@@ -6,7 +6,8 @@ import { simpleParser } from 'mailparser';
 import whatsapp from 'whatsapp-web.js';
 import qr from 'qrcode-terminal';
 import { PRIVATE, config, readJson, writeJson, log, sleep } from './common.js';
-import { chunks, senderMatches, deliverParts, emailText } from './delivery.js';
+import { senderMatches, deliverParts } from './delivery.js';
+import { emailPdfFilename, renderEmailPdf } from './email-pdf.js';
 
 const { Client, LocalAuth, MessageMedia } = whatsapp;
 const tokenPath = path.join(PRIVATE, 'gmail-token.json');
@@ -110,24 +111,11 @@ client.once('ready', async () => {
             persist();
             continue;
           }
-          const header = [
-            'German Embassy email',
-            'From: ' + (parsed.from?.text || config.sender),
-            'To: ' + (parsed.to?.text || config.gmailAccount),
-            'Subject: ' + (parsed.subject || '(no subject)'),
-            'Date: ' + (parsed.date?.toISOString() || 'Not supplied'),
-            'Gmail: https://mail.google.com/mail/u/0/#all/' + id
-          ].join('\n');
-          const body = emailText(parsed);
-          const textParts = chunks(header + '\n\n' + body);
-          const parts = textParts.map((text, index) => ({
-            key: 'text-' + index,
-            text: textParts.length > 1 ? '[' + (index + 1) + '/' + textParts.length + ']\n' + text : text
-          }));
-          parts.push({
-            key: 'original', data: raw, mime: 'message/rfc822',
-            filename: 'embassy-' + id + '.eml'
-          });
+          const emailPdf = await renderEmailPdf(client.pupBrowser, parsed);
+          const parts = [{
+            key: 'email-pdf', data: emailPdf, mime: 'application/pdf',
+            filename: emailPdfFilename(parsed, id)
+          }];
           parsed.attachments.forEach((attachment, index) => parts.push({
             key: 'attachment-' + index, data: attachment.content,
             mime: attachment.contentType || 'application/octet-stream',
