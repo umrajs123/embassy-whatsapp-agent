@@ -9,6 +9,9 @@ if (!fs.existsSync(credentialsPath)) {
   console.error('Missing credentials.json. Follow SETUP.md to create a Google Desktop app OAuth client.');
   process.exit(1);
 }
+const credentials = readJson(credentialsPath);
+const client = credentials.installed;
+if (!client) throw new Error('Use Desktop app credentials.');
 const auth = await authenticate({
   scopes: ['https://www.googleapis.com/auth/gmail.readonly'],
   keyfilePath: credentialsPath
@@ -20,7 +23,16 @@ const accessToken = await auth.getAccessToken();
 if (!accessToken?.token) {
   throw new Error('Google authorization completed without an access token. Run Connect-Gmail.cmd again.');
 }
-const gmail = google.gmail({ version: 'v1', auth });
+// @google-cloud/local-auth bundles its own auth client. Re-wrap the returned
+// credentials in googleapis' native OAuth client so Gmail always receives the
+// Authorization header.
+const gmailAuth = new google.auth.OAuth2(
+  client.client_id,
+  client.client_secret,
+  client.redirect_uris?.[0]
+);
+gmailAuth.setCredentials(auth.credentials);
+const gmail = google.gmail({ version: 'v1', auth: gmailAuth });
 const { data } = await gmail.users.getProfile({ userId: 'me' });
 if (data.emailAddress.toLowerCase() !== config.gmailAccount.toLowerCase()) {
   throw new Error('Wrong Google account selected. Select the configured Gmail account.');
@@ -28,9 +40,6 @@ if (data.emailAddress.toLowerCase() !== config.gmailAccount.toLowerCase()) {
 if (!auth.credentials.refresh_token) {
   throw new Error('Google did not return a refresh token. Revoke this app in your Google account and reconnect.');
 }
-const credentials = readJson(credentialsPath);
-const client = credentials.installed;
-if (!client) throw new Error('Use Desktop app credentials.');
 writeJson(path.join(PRIVATE, 'gmail-token.json'), {
   type: 'authorized_user', client_id: client.client_id,
   client_secret: client.client_secret, refresh_token: auth.credentials.refresh_token

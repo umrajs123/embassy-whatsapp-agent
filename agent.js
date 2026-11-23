@@ -47,7 +47,9 @@ const browserPath = [
 if (!browserPath) throw new Error('Install Chrome or Edge before starting the agent.');
 const client = new Client({
   authStrategy: new LocalAuth({ dataPath: path.join(PRIVATE, 'whatsapp-session') }),
-  puppeteer: { headless: true, executablePath: browserPath }
+  // Set WHATSAPP_VISIBLE=1 only for the initial QR pairing. Normal starts
+  // remain hidden so the unattended worker does not interrupt the desktop.
+  puppeteer: { headless: process.env.WHATSAPP_VISIBLE !== '1', executablePath: browserPath }
 });
 let ready = false;
 let stopping = false;
