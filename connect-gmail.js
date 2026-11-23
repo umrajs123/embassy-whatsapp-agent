@@ -13,6 +13,13 @@ const auth = await authenticate({
   scopes: ['https://www.googleapis.com/auth/gmail.readonly'],
   keyfilePath: credentialsPath
 });
+// local-auth should provide an access token after the browser callback.  Ask
+// the client for one explicitly so a malformed or incomplete callback never
+// reaches the Gmail API as an anonymous request.
+const accessToken = await auth.getAccessToken();
+if (!accessToken?.token) {
+  throw new Error('Google authorization completed without an access token. Run Connect-Gmail.cmd again.');
+}
 const gmail = google.gmail({ version: 'v1', auth });
 const { data } = await gmail.users.getProfile({ userId: 'me' });
 if (data.emailAddress.toLowerCase() !== config.gmailAccount.toLowerCase()) {
