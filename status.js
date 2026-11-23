@@ -9,10 +9,13 @@ if (!fs.existsSync(file)) {
   const entries = Object.entries(state.messages);
   console.log('Last successful mailbox check:', state.lastSuccessfulCheck || 'never');
   console.log('Completed emails:', entries.filter(([, item]) => item.complete).length);
-  for (const [id, item] of entries) {
+  const incomplete = entries.filter(([, item]) => !item.complete && !item.ignored);
+  for (const [id, item] of incomplete) {
     if (item.complete || item.ignored) continue;
     console.log('Incomplete email:', id, 'Error:', item.error?.code || 'none');
     for (const [key, part] of Object.entries(item.parts)) console.log(' ', key, part.status);
   }
-  console.log('A sending/uncertain part needs review in WhatsApp before retrying. See SETUP.md.');
+  console.log(incomplete.length
+    ? 'A sending/uncertain part needs review in WhatsApp before retrying. See SETUP.md.'
+    : 'No pending or uncertain deliveries.');
 }
